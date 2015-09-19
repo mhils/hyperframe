@@ -17,9 +17,18 @@ def decode_frame(frame_data):
 class TestGeneralFrameBehaviour(object):
     def test_base_frame_ignores_flags(self):
         f = Frame(stream_id=0)
-        flags = f.parse_flags(0xFF)
+        flags = f.parse_flags(0x00)
         assert not flags
         assert isinstance(flags, set)
+
+    def test_invalid_flags(self):
+        f = Frame(0)
+        with pytest.raises(ValueError):
+            f.parse_flags(0xFF)
+
+    def test_parse_frame_header_unknown_type(self):
+        with pytest.raises(ValueError):
+            Frame.parse_frame_header(b'\x00\x00\x00\xFF\x00\x00\x00\x00\x01')
 
     def test_base_frame_cant_serialize(self):
         f = Frame(stream_id=0)
@@ -46,7 +55,7 @@ class TestDataFrame(object):
 
     def test_data_frame_has_correct_flags(self):
         f = DataFrame(1)
-        flags = f.parse_flags(0xFF)
+        flags = f.parse_flags(0x1 | 0x8)
         assert flags == set([
             'END_STREAM', 'PADDED'
         ])
@@ -136,7 +145,7 @@ class TestPriorityFrame(object):
 
     def test_priority_frame_has_no_flags(self):
         f = PriorityFrame(1)
-        flags = f.parse_flags(0xFF)
+        flags = f.parse_flags(0x00)
         assert flags == set()
         assert isinstance(flags, set)
 
@@ -165,7 +174,7 @@ class TestPriorityFrame(object):
 class TestRstStreamFrame(object):
     def test_rst_stream_frame_has_no_flags(self):
         f = RstStreamFrame(1)
-        flags = f.parse_flags(0xFF)
+        flags = f.parse_flags(0x00)
         assert not flags
         assert isinstance(flags, set)
 
@@ -216,12 +225,12 @@ class TestSettingsFrame(object):
 
     def test_settings_frame_has_only_one_flag(self):
         f = SettingsFrame()
-        flags = f.parse_flags(0xFF)
+        flags = f.parse_flags(0x01)
         assert flags == set(['ACK'])
 
     def test_settings_frame_serializes_properly(self):
         f = SettingsFrame()
-        f.parse_flags(0xFF)
+        f.parse_flags(0x01)
         f.settings = self.settings
 
         s = f.serialize()
@@ -242,7 +251,7 @@ class TestSettingsFrame(object):
 class TestPushPromiseFrame(object):
     def test_push_promise_frame_flags(self):
         f = PushPromiseFrame(1)
-        flags = f.parse_flags(0xFF)
+        flags = f.parse_flags(0x04 | 0x08)
 
         assert flags == set(['END_HEADERS', 'PADDED'])
 
@@ -276,13 +285,13 @@ class TestPushPromiseFrame(object):
 class TestPingFrame(object):
     def test_ping_frame_has_only_one_flag(self):
         f = PingFrame()
-        flags = f.parse_flags(0xFF)
+        flags = f.parse_flags(0x01)
 
         assert flags == set(['ACK'])
 
     def test_ping_frame_serializes_properly(self):
         f = PingFrame()
-        f.parse_flags(0xFF)
+        f.parse_flags(0x01)
         f.opaque_data = b'\x01\x02'
 
         s = f.serialize()
@@ -318,7 +327,7 @@ class TestPingFrame(object):
 class TestGoAwayFrame(object):
     def test_go_away_has_no_flags(self):
         f = GoAwayFrame()
-        flags = f.parse_flags(0xFF)
+        flags = f.parse_flags(0x00)
 
         assert not flags
         assert isinstance(flags, set)
@@ -358,7 +367,7 @@ class TestGoAwayFrame(object):
 class TestWindowUpdateFrame(object):
     def test_window_update_has_no_flags(self):
         f = WindowUpdateFrame(0)
-        flags = f.parse_flags(0xFF)
+        flags = f.parse_flags(0x00)
 
         assert not flags
         assert isinstance(flags, set)
@@ -382,7 +391,7 @@ class TestWindowUpdateFrame(object):
 class TestHeadersFrame(object):
     def test_headers_frame_flags(self):
         f = HeadersFrame(1)
-        flags = f.parse_flags(0xFF)
+        flags = f.parse_flags(0x01 | 0x04 | 0x08 | 0x20)
 
         assert flags == set(['END_STREAM', 'END_HEADERS',
                              'PADDED', 'PRIORITY'])
@@ -445,7 +454,7 @@ class TestHeadersFrame(object):
 class TestContinuationFrame(object):
     def test_continuation_frame_flags(self):
         f = ContinuationFrame(1)
-        flags = f.parse_flags(0xFF)
+        flags = f.parse_flags(0x04)
 
         assert flags == set(['END_HEADERS'])
 
@@ -483,7 +492,7 @@ class TestAltSvcFrame(object):
 
     def test_altsvc_frame_flags(self):
         f = AltSvcFrame()
-        flags = f.parse_flags(0xFF)
+        flags = f.parse_flags(0x00)
 
         assert flags == set()
 
@@ -542,7 +551,7 @@ class TestAltSvcFrame(object):
 class TestBlockedFrame(object):
     def test_blocked_has_no_flags(self):
         f = BlockedFrame(0)
-        flags = f.parse_flags(0xFF)
+        flags = f.parse_flags(0x00)
 
         assert not flags
         assert isinstance(flags, set)

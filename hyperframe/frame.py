@@ -62,6 +62,9 @@ class Frame(object):
         flags = fields[3]
         stream_id = fields[4]
 
+        if type not in FRAMES:
+            raise ValueError("Unknown frame type: %d" % type)
+
         frame = FRAMES[type](stream_id)
         frame.parse_flags(flags)
         return (frame, length)
@@ -70,6 +73,9 @@ class Frame(object):
         for flag, flag_bit in self.defined_flags:
             if flag_byte & flag_bit:
                 self.flags.add(flag)
+                flag_byte &= ~flag_bit
+        if flag_byte:
+            raise ValueError("Unknown flags: %d" % flag_byte)
 
         return self.flags
 
